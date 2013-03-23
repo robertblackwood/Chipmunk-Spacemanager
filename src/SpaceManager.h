@@ -16,12 +16,7 @@
 /*
 	ATTENTION! COCOS2D USERS
  
-	Large change: Include and use SpaceManagerCocos2d class now found
-	in the ccExtras folder. This design change gives a better seperation
-	and will prove much more flexible in the long run, thanks for
-	understanding.
- 
-    Also, note you will not want to include the PhysicsEditorExtras folder
+    Note you will not want to include the PhysicsEditorExtras folder
     if you are not using PhysicsEditor support; your app will not compile.
  
 	p.s. You may need to add the ccExtras folder path to your
@@ -29,8 +24,8 @@
  */
 
 // 0x00 HI ME LO
-// 00   00 02 02
-#define SPACE_MANAGER_VERSION 0x00000202
+// 00   00 03 00
+#define SPACE_MANAGER_VERSION 0x00000300
 
 #import "chipmunk.h"
 
