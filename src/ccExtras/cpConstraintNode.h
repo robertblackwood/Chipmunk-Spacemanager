@@ -35,7 +35,12 @@ void cpConstraintNodeDraw(cpConstraint *constraint);
     calls above to draw many constraints at once */
 void cpConstraintNodeEfficientDraw(cpConstraint *constraint);
 
-@interface cpConstraintNode : CCNode <CCRGBAProtocol>
+@interface cpConstraintNode
+#if (COCOS2D_VERSION >= 0x00020100)
+: CCNodeRGBA
+#else
+: CCNode <CCRGBAProtocol>
+#endif
 {
 	cpConstraint *_constraint;
 	

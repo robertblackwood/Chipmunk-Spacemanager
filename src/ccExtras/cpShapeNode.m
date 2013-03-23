@@ -331,6 +331,8 @@ void cpShapeNodeDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation)
 @synthesize fillShape = _fillShape;
 @synthesize drawDecoration = _drawDecoration;
 @synthesize cacheDraw = _cacheDraw;
+@synthesize cascadeColorEnabled=_cascadeColorEnabled;
+@synthesize cascadeOpacityEnabled=_cascadeOpacityEnabled;
 
 - (id) initWithShape:(cpShape*)shape;
 {
@@ -414,9 +416,14 @@ void cpShapeNodeDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation)
     return self.color;
 }
 
--(BOOL) cascadeColorEnabled
+-(BOOL) isCascadeColorEnabled
 {
     return NO;
+}
+
+-(void) setCascadeColorEnabled:(BOOL)cascadeColorEnabled
+{
+    
 }
 
 -(void) updateDisplayedColor:(ccColor3B)color
@@ -429,7 +436,7 @@ void cpShapeNodeDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation)
     return self.opacity;
 }
 
--(BOOL) cascadeOpacityEnabled
+-(BOOL) isCascadeOpacityEnabled
 {
     return NO;
 }

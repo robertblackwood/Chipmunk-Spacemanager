@@ -87,7 +87,7 @@ static void freeBodyShapes(cpBody *body, cpShape *shape, void *data)
 
 -(cpShape*) shape
 {
-    cpShape* shape;
+    cpShape* shape = nil;
     if (_shape)
         shape = _shape;
     else if (_body)
