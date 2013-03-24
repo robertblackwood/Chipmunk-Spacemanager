@@ -331,8 +331,10 @@ void cpShapeNodeDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation)
 @synthesize fillShape = _fillShape;
 @synthesize drawDecoration = _drawDecoration;
 @synthesize cacheDraw = _cacheDraw;
+#if (COCOS2D_VERSION >= 0x00020100)
 @synthesize cascadeColorEnabled=_cascadeColorEnabled;
 @synthesize cascadeOpacityEnabled=_cascadeOpacityEnabled;
+#endif
 
 - (id) initWithShape:(cpShape*)shape;
 {

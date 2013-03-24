@@ -443,12 +443,12 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 {	
 	[super init];
 	
-	static BOOL initialized = NO;	
-	if (!initialized)
-	{
-		cpInitChipmunk();
-		initialized = YES;
-	}
+//	static BOOL initialized = NO;	
+//	if (!initialized)
+//	{
+//		cpInitChipmunk();
+//		initialized = YES;
+//	}
 	
 	_space = space;
 	
