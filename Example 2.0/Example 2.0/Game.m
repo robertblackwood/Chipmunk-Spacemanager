@@ -122,6 +122,14 @@
         
         
         [self addChild:[_smgr createDebugLayer]];
+        
+        cpShape *c = [_smgr addCircleAt:cpv(100, 210) mass:50 radius:10];
+        [_smgr addPivotToBody:c->body fromBody:_smgr.staticBody worldAnchor:c->body->p];
+        [_smgr addMotorToBody:c->body fromBody:_smgr.staticBody rate:1];
+        
+        cpShape *d = [_smgr addRectAt:cpv(100, 240) mass:10 width:10 height:20 rotation:0];
+        [_smgr addPivotToBody:d->body fromBody:c->body worldAnchor:cpvadd(d->body->p, cpv(0,-8))];
+        [_smgr addRotaryLimitToBody:d->body fromBody:c->body min:-.05 max:0.5];
                 
         [_smgr start];
         
