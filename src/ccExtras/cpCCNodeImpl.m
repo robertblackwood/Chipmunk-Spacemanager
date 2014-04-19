@@ -43,6 +43,7 @@ static void freeBodyShapes(cpBody *body, cpShape *shape, void *data)
 @implementation cpCCNodeImpl
 
 @synthesize ignoreRotation = _ignoreRotation;
+@synthesize ignorePosition = _ignorePosition;
 @synthesize integrationDt = _integrationDt;
 @synthesize spaceManager = _spaceManager;
 @synthesize autoFreeShapeAndBody = _autoFreeShapeAndBody;
@@ -87,7 +88,7 @@ static void freeBodyShapes(cpBody *body, cpShape *shape, void *data)
 
 -(cpShape*) shape
 {
-    cpShape* shape = nil;
+    cpShape* shape = nil;;
     if (_shape)
         shape = _shape;
     else if (_body)
@@ -170,14 +171,14 @@ static void freeBodyShapes(cpBody *body, cpShape *shape, void *data)
 }
 
 -(void)setPosition:(cpVect)pos
-{
-	if (_body != nil)
-	{
+{	
+	if (_body != nil && !_ignorePosition)
+	{		
         //Scale it appropriately
         pos = cpv(pos.x/_xScaleRatio, pos.y/_yScaleRatio);
-        
+
 		//If we're out of sync with chipmunk
-        if (fabs(_body->p.x - pos.x) > kSmgrEpsilon ||
+        if (fabs(_body->p.x - pos.x) > kSmgrEpsilon || 
             fabs(_body->p.y - pos.y) > kSmgrEpsilon)
 		{
 			//(Basic Euler integration)
@@ -187,7 +188,7 @@ static void freeBodyShapes(cpBody *body, cpShape *shape, void *data)
                 if (_integrationDt < 0)
                 {
                     // Avoid divide by zero
-                    if (_spaceManager)
+                    if (_spaceManager && _spaceManager.lastDt > 0)
                         cpBodySetVel(_body, cpvmult(cpvsub(pos, cpBodyGetPos(_body)), 1.0f/_spaceManager.lastDt));
                 }
                 else
@@ -199,8 +200,8 @@ static void freeBodyShapes(cpBody *body, cpShape *shape, void *data)
 			
 			//If we're a static shape, we need to tell our space that we've changed
 			if (_spaceManager && _body->m == STATIC_MASS)
-                cpBodyEachShape(_body, rehashBodyShapes, (void*)_spaceManager);
-            
+                cpBodyEachShape(_body, rehashBodyShapes, (void*)_spaceManager);                
+
             //else activate!, could be sleeping
             else
 				cpBodyActivate(_body);
@@ -256,8 +257,11 @@ static void freeBodyShapes(cpBody *body, cpShape *shape, void *data)
         pt.x *= _xScaleRatio;
         pt.y *= _yScaleRatio;
         
-        [node setPosition:pt];
-        [node setRotation:-CC_RADIANS_TO_DEGREES(r)];
+        if (!_ignorePosition)
+            [node setPosition:pt];
+        
+        if (!_ignoreRotation)
+            [node setRotation:-CC_RADIANS_TO_DEGREES(r)];
     }
 }
 

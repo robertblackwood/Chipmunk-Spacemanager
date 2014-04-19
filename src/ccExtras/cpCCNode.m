@@ -11,6 +11,16 @@
 
 #import "cpCCNode.h"
 
+#if (COCOS2D_VERSION >= 0x00020100)
+#define position_               _position
+#define anchorPointInPoints_    _anchorPointInPoints
+#define skewX_                  _skewX
+#define skewY_                  _skewY
+#define scaleX_                 _scaleX
+#define scaleY_                 _scaleY
+#define transform_              _transform
+#endif
+
 
 @implementation cpCCNode
 
@@ -60,11 +70,6 @@
 }
 
 #if (COCOS2D_VERSION >= 0x00020000)
-- (BOOL) dirty
-{
-    return YES;
-}
-
 -(CGAffineTransform) nodeToParentTransform
 {
 	cpBody *body = _implementation.body;
@@ -74,75 +79,50 @@
         return [super nodeToParentTransform];
     
 	cpVect rot = (_implementation.ignoreRotation ? cpvforangle(-CC_DEGREES_TO_RADIANS(self.rotation)) : body->rot);
-    cpVect pos = cpBodyGetPos(body);
+    cpVect pos = (_implementation.ignorePosition ? self.position : cpBodyGetPos(body));
     
     // Translate values
     float x = pos.x*cpCCNodeImpl.xScaleRatio;
     float y = pos.y*cpCCNodeImpl.yScaleRatio;
     
     //Sync node
-#if (COCOS2D_VERSION >= 0x00020100)
-    _position = ccp(x,y);
-#else
     position_ = ccp(x,y);
-#endif
     self.rotation = -CC_RADIANS_TO_DEGREES(cpvtoangle(rot));
     
-#if (COCOS2D_VERSION >= 0x00020100)
-    CGPoint anchorPointInPoints = _anchorPointInPoints;
-    BOOL needsSkewMatrix = (_skewX || _skewY);
-    float scaleX = _scaleX;
-    float scaleY = _scaleY;
-    float skewX = _skewX;
-    float skewY = _skewY;
-#else
-    CGPoint anchorPointInPoints = anchorPointInPoints_;
-    BOOL needsSkewMatrix = (skewX_ || skewY_);
-    float scaleX = scaleX_;
-    float scaleY = scaleY_;
-    float skewX = skewX_;
-    float skewY = skewY_;
-#endif
-    
     if (self.ignoreAnchorPointForPosition) {
-        x += anchorPointInPoints.x;
-        y += anchorPointInPoints.y;
+        x += anchorPointInPoints_.x;
+        y += anchorPointInPoints_.y;
     }
     
+    BOOL needsSkewMatrix = ( skewX_ || skewY_ );
     
     // optimization:
     // inline anchor point calculation if skew is not needed
-    if( !needsSkewMatrix && !CGPointEqualToPoint(anchorPointInPoints, CGPointZero) ) {
-        x += rot.x * -anchorPointInPoints.x * scaleX + -rot.y * -anchorPointInPoints.y * scaleY;
-        y += rot.y * -anchorPointInPoints.x * scaleX +  rot.x * -anchorPointInPoints.y * scaleY;
+    if( !needsSkewMatrix && !CGPointEqualToPoint(anchorPointInPoints_, CGPointZero) ) {
+        x += rot.x * -anchorPointInPoints_.x * scaleX_ + -rot.y * -anchorPointInPoints_.y * scaleY_;
+        y += rot.y * -anchorPointInPoints_.x * scaleX_ +  rot.x * -anchorPointInPoints_.y * scaleY_;
     }
     
     
     // Build Transform Matrix
-    CGAffineTransform transform = CGAffineTransformMake( rot.x * scaleX,  rot.y * scaleX,
-                                                        -rot.y * scaleY, rot.x * scaleY,
-                                                        x, y );
+    transform_ = CGAffineTransformMake( rot.x * scaleX_,  rot.y * scaleX_,
+                                       -rot.y * scaleY_, rot.x * scaleY_,
+                                       x, y );
     
     // XXX: Try to inline skew
     // If skew is needed, apply skew and then anchor point
     if( needsSkewMatrix ) {
-        CGAffineTransform skewMatrix = CGAffineTransformMake(1.0f, tanf(CC_DEGREES_TO_RADIANS(skewY)),
-                                                             tanf(CC_DEGREES_TO_RADIANS(skewX)), 1.0f,
+        CGAffineTransform skewMatrix = CGAffineTransformMake(1.0f, tanf(CC_DEGREES_TO_RADIANS(skewY_)),
+                                                             tanf(CC_DEGREES_TO_RADIANS(skewX_)), 1.0f,
                                                              0.0f, 0.0f );
-        transform = CGAffineTransformConcat(skewMatrix, transform);
+        transform_ = CGAffineTransformConcat(skewMatrix, transform_);
         
         // adjust anchor point
-        if( ! CGPointEqualToPoint(anchorPointInPoints, CGPointZero) )
-            transform = CGAffineTransformTranslate(transform, -anchorPointInPoints.x, -anchorPointInPoints.y);
+        if( ! CGPointEqualToPoint(anchorPointInPoints_, CGPointZero) )
+            transform_ = CGAffineTransformTranslate(transform_, -anchorPointInPoints_.x, -anchorPointInPoints_.y);
     }
     
-#if (COCOS2D_VERSION >= 0x00020100)
-    _transform = transform;
-#else
-    transform_ = transform;
-#endif
-    
-    return transform;
+    return transform_;
 }
 #endif
 
@@ -158,8 +138,9 @@
 
 -(void)setRotation:(float)rot
 {
-	if([_implementation setRotation:rot])
-		[super setRotation:rot];
+	//if([_implementation setRotation:rot])
+    [_implementation setRotation:rot];
+	[super setRotation:rot];
 }
 
 -(void)setPosition:(cpVect)pos
@@ -201,6 +182,16 @@
 -(BOOL) ignoreRotation
 {
 	return _implementation.ignoreRotation;
+}
+
+-(void) setIgnorePosition:(BOOL)ignore
+{
+	_implementation.ignorePosition = ignore;
+}
+
+-(BOOL) ignorePosition
+{
+	return _implementation.ignorePosition;
 }
 
 -(void) setIntegrationDt:(cpFloat)dt

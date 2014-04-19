@@ -42,14 +42,17 @@ public:
 class cpSpaceSerializer 
 {
 public:
-	cpSpaceSerializer() : delegate(NULL) {}
-	cpSpaceSerializer(cpSpaceSerializerDelegate *delegate) : delegate(delegate) {}
+	cpSpaceSerializer() : delegate(NULL), _scaleBy(1) {}
+	cpSpaceSerializer(cpSpaceSerializerDelegate *delegate) : delegate(delegate), _scaleBy(1) {}
 	
 	cpSpace* load(const char* filename);
 	cpSpace* load(cpSpace *space, const char* filename);
 	bool save(cpSpace* space, const char* filename);
 	
 	cpSpaceSerializerDelegate *delegate;
+    
+    void setScaleCoordinatesBy(float scaleBy);
+    float scaleCoordinatesBy();
 		
 	//Reading
 	virtual cpShape *createShape(TiXmlElement *elm);
@@ -105,6 +108,7 @@ public:
 private:
     TiXmlDocument   _doc;
     cpSpace         *_space;
+    float           _scaleBy;
     
     //For Resolving on read and avoiding redundancies on write    
     BodyMap     _bodyMap;

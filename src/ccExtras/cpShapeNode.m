@@ -23,6 +23,12 @@
 #define CP_CIRCLE_PT_COUNT 26
 #define CP_SEG_PT_COUNT 26
 
+#if (COCOS2D_VERSION >= 0x00020100)
+#define shaderProgram_          _shaderProgram
+#define visible_                _visible
+#define program_                _program
+#define glServerState_          _glServerState
+#endif
 
 static const int SMGR_sPtCount = CP_SEG_PT_COUNT;
 static const GLfloat SMGR_sPt[CP_SEG_PT_COUNT+CP_SEG_PT_COUNT] = {
@@ -331,10 +337,6 @@ void cpShapeNodeDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation)
 @synthesize fillShape = _fillShape;
 @synthesize drawDecoration = _drawDecoration;
 @synthesize cacheDraw = _cacheDraw;
-#if (COCOS2D_VERSION >= 0x00020100)
-@synthesize cascadeColorEnabled=_cascadeColorEnabled;
-@synthesize cascadeOpacityEnabled=_cascadeOpacityEnabled;
-#endif
 
 - (id) initWithShape:(cpShape*)shape;
 {
@@ -360,13 +362,8 @@ void cpShapeNodeDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation)
 #if (COCOS2D_VERSION >= 0x00020000)  
     self.shaderProgram = [[CCShaderCache sharedShaderCache] programForKey:kCCShader_Position_uColor];
     
-#if (COCOS2D_VERSION >= 0x00020100)
-    _colorLocation = glGetUniformLocation(self.shaderProgram->_program, "u_color");
-    _pointSizeLocation = glGetUniformLocation(self.shaderProgram->_program, "u_pointSize");
-#else
     _colorLocation = glGetUniformLocation(self.shaderProgram->program_, "u_color");
     _pointSizeLocation = glGetUniformLocation(self.shaderProgram->program_, "u_pointSize");
-#endif
 #endif
 		
 	return self;
@@ -400,6 +397,8 @@ void cpShapeNodeDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation)
 
 - (void) setColor:(ccColor3B)color
 {
+    [super setColor:color];
+    
     _color = ccc4(color.r, color.g, color.b, _color.a);
 }
 
@@ -410,42 +409,9 @@ void cpShapeNodeDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation)
 
 -(void) setOpacity:(GLubyte)opacity
 {
+    [super setOpacity:opacity];
+    
     _color.a = opacity;
-}
-
--(ccColor3B) displayedColor
-{
-    return self.color;
-}
-
--(BOOL) isCascadeColorEnabled
-{
-    return NO;
-}
-
--(void) setCascadeColorEnabled:(BOOL)cascadeColorEnabled
-{
-    
-}
-
--(void) updateDisplayedColor:(ccColor3B)color
-{
-    
-}
-
--(GLubyte) displayedOpacity
-{
-    return self.opacity;
-}
-
--(BOOL) isCascadeOpacityEnabled
-{
-    return NO;
-}
-
--(void) updateDisplayedOpacity:(GLubyte)opacity
-{
-    
 }
 
 - (void) cacheCircle
@@ -655,12 +621,7 @@ void cpShapeNodeDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation)
 #if (COCOS2D_VERSION < 0x00020000)
 		glBindTexture(GL_TEXTURE_2D, _texture.name);
 #else
-        
-#if (COCOS2D_VERSION >= 0x00020100)
-        ccGLEnable(_glServerState);
-#else
-        ccGLEnable(glServerState_);
-#endif
+        ccGLEnable( glServerState_ );
         ccGLBindTexture2D(_texture.name);
 #endif        
     }
@@ -814,12 +775,7 @@ void cpShapeNodeDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation)
 #if (COCOS2D_VERSION < 0x00020000)
     glBindTexture(GL_TEXTURE_2D, _texture.name);
 #else
-    
-#if (COCOS2D_VERSION >= 0x00020100)
-    ccGLEnable(_glServerState);
-#else
-    ccGLEnable(glServerState_);
-#endif
+    ccGLEnable( glServerState_ );
     ccGLBindTexture2D(_texture.name);
 #endif    
 

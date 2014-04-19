@@ -23,6 +23,12 @@
 #define SCALE_FACTOR 1
 #endif
 
+#if (COCOS2D_VERSION >= 0x00020100)
+#define shaderProgram_          _shaderProgram
+#define visible_                _visible
+#define program_                _program
+#endif
+
 static void drawCircle(cpVect center, float r, int segs)
 {
 	const float coef = 2.0f * (float)M_PI/segs;
@@ -482,23 +488,19 @@ void cpConstraintNodeDraw(cpConstraint *constraint)
 	[super init];
 	
 	_constraint = c;
-	_color = ccBLACK;
-	_opacity = 255;
 	_pointSize = 3;
 	_lineWidth = 1;
 	_smoothDraw = YES;
 	_constraint->data = self;
-    
+
+    self.color = ccBLACK;
+	self.opacity = 255;
+
 #if (COCOS2D_VERSION >= 0x00020000)  
     self.shaderProgram = [[CCShaderCache sharedShaderCache] programForKey:kCCShader_Position_uColor];
     
-#if (COCOS2D_VERSION >= 0x00020100)
-    _colorLocation = glGetUniformLocation(self.shaderProgram->_program, "u_color");
-    _pointSizeLocation = glGetUniformLocation(self.shaderProgram->_program, "u_pointSize");
-#else
     _colorLocation = glGetUniformLocation(self.shaderProgram->program_, "u_color");
     _pointSizeLocation = glGetUniformLocation(self.shaderProgram->program_, "u_pointSize");
-#endif
 #endif
 	
 	return self;
@@ -636,69 +638,19 @@ void cpConstraintNodeDraw(cpConstraint *constraint)
 	}
 #else
     cpConstraintNodePreDrawState(self.shaderProgram);
-    ccColor4F color = ccc4FFromccc3B(_color);
-    color.a = _opacity;
+    ccColor4F color = ccc4FFromccc3B(_realColor);
+    color.a = _realOpacity;
     [self.shaderProgram setUniformLocation:_colorLocation with4fv:(GLfloat*) &color.r count:1];
     [self.shaderProgram setUniformLocation:_pointSizeLocation withF1:_pointSize];
 #endif
     
-	if( _opacity != 255 )
+	if( _realOpacity != 255 )
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 				
     cpConstraintNodeDraw(_constraint);
 	
-	if( _opacity != 255 )
+	if( _realOpacity != 255 )
 		glBlendFunc(CC_BLEND_SRC, CC_BLEND_DST);
-}
-
--(void) setColor:(ccColor3B)color
-{
-    _color = color;
-}
-
--(ccColor3B) color
-{
-    return _color;
-}
-
--(void) setOpacity:(GLubyte)opacity
-{
-    _opacity = opacity;
-}
-
--(GLubyte) opacity
-{
-    return _opacity;
-}
-
--(ccColor3B) displayedColor
-{
-    return self.color;
-}
-
--(BOOL) cascadeColorEnabled
-{
-    return NO;
-}
-
--(void) updateDisplayedColor:(ccColor3B)color
-{
-    
-}
-
--(GLubyte) displayedOpacity
-{
-    return self.opacity;
-}
-
--(BOOL) cascadeOpacityEnabled
-{
-    return NO;
-}
-
--(void) updateDisplayedOpacity:(GLubyte)opacity
-{
-    
 }
 
 @end

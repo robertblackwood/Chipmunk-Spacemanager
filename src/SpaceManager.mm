@@ -17,6 +17,16 @@
 #import "chipmunk_unsafe.h"
 #import "cpSpaceSerializer.h"
 
+#import <UIKit/UIGeometry.h>
+
+static void shapePointerToArray(cpShape *shape, void* data) {
+	if (shape) {
+		NSMutableArray *a = (NSMutableArray *)data; // Blind-faith cast
+		
+		[a addObject:[NSValue valueWithPointer:shape]];
+	}
+}
+
 /* Private Method Declarations */
 @interface SpaceManager (PrivateMethods)
 -(void) setupDefaultShape:(cpShape*)s;
@@ -24,12 +34,12 @@
 -(void) removeAndMaybeFreeBody:(cpBody*)body freeBody:(BOOL)freeBody;
 @end
 
-@interface RayCastInfoValue : NSValue
+@interface FreeCValue : NSValue
 @end
-@implementation RayCastInfoValue
+@implementation FreeCValue
 - (void) dealloc
 {
-	cpSegmentQueryInfo *info = (cpSegmentQueryInfo*)[self pointerValue];
+	void *info = [self pointerValue];
 	free(info);
 	
 	[super dealloc];
@@ -63,8 +73,8 @@ typedef struct ExplosionQueryContext {
 	cpLayers layers;
 	cpGroup group;
 	cpVect at;
-	float radius;
-	float maxForce;
+	cpFloat radius;
+	cpFloat maxForce;
 } ExplosionQueryContext;
 
 class cpSSDelegate : public cpSpaceSerializerDelegate 
@@ -149,6 +159,7 @@ private:
 };
 
 typedef struct { cpCollisionType a, b; } cpCollisionTypePair;
+typedef struct { NSMutableArray *shapes, *contactSets; } shapeAndContactSets;
 
 static inline cpBool
 bbIntersects(const cpBB a, const cpBB b)
@@ -247,9 +258,24 @@ static void collectAllShapes(cpShape *shape, NSMutableArray *outShapes)
 	[outShapes addObject:[NSValue valueWithPointer:shape]];
 }
 
-static void collectAllCollidingShapes(cpShape *shape, cpContactPointSet *points, NSMutableArray *outShapes)
+static void collectAllCollidingShapes(cpShape *shape, cpContactPointSet *points, shapeAndContactSets *pair)
 {
-	[outShapes addObject:[NSValue valueWithPointer:shape]];	
+	[pair->shapes addObject:[NSValue valueWithPointer:shape]];
+    
+    // Collect contacts?
+    if (pair->contactSets)
+    {
+        cpContactPointSet *set = (cpContactPointSet*)malloc(sizeof(cpContactPointSet));
+        set->count = points->count;
+        
+        for(int i=0; i < points->count; i++){
+            set->points[i].point = points->points[i].point;
+            set->points[i].normal = points->points[i].normal;
+            set->points[i].dist = points->points[i].dist;
+        }
+        
+        [pair->contactSets addObject:[FreeCValue valueWithPointer:set]];
+    }
 }
 
 static void collectAllShapesOnBody(cpBody *body, cpShape *shape, void *outShapes)
@@ -268,7 +294,7 @@ static void collectAllSegmentQueryInfos(cpShape *shape, cpFloat t, cpVect n, NSM
 	info->shape = shape;
 	info->t = t;
 	info->n = n;
-	[outInfos addObject:[RayCastInfoValue valueWithPointer:info]];
+	[outInfos addObject:[FreeCValue valueWithPointer:info]];
 }
 
 static void collectAllSegmentQueryShapes(cpShape *shape, cpFloat t, cpVect n, NSMutableArray *outShapes)
@@ -314,39 +340,48 @@ static void clearBodyReferenceFromShape(cpBody *body, cpShape *shape, void *data
 
 static void freeShapesHelper(cpShape *shape, void *data)
 {
-	cpSpace *space = (cpSpace*)data;
+	//cpSpace *space = (cpSpace*)data;
     
-    //Do this for rogue bodies (Free them, clear any references to ensure this only happens once)
 	if (shape)
     {
-        cpBody* body = shape->body;
+        //cpBody* body = shape->body;
 
-        if (body 
-            && body != space->staticBody            //not the spaces own static body
-            && !cpSpaceContainsBody(space, body))   //rogue body
-        {
-            //clear refs from all shapes
-            cpBodyEachShape(body, clearBodyReferenceFromShape, NULL);
-            cpBodyFree(body);
-        }
+        //Do this for rogue bodies (Free them, clear any references to ensure this only happens once)
+//        if (body
+//            && body != space->staticBody            //not the spaces own static body
+//            && !cpSpaceContainsBody(space, body))   //rogue body
+//        {
+//            //clear refs from all shapes
+//            cpBodyEachShape(body, clearBodyReferenceFromShape, NULL);
+//            cpBodyFree(body);
+//        }
         
-        // no-no freeSpace takes care of this
-        //cpShapeFree(shape);
+
+        //cpSpaceRemoveShape(space, shape);
+        cpShapeFree(shape);
     }
 }
 
 static void freeBodiesHelper(cpBody *body, void *data)
 {
-	//cpSpace *space = (cpSpace*)data;    
-	if (body)
+	//cpSpace *space = (cpSpace*)data;
+	
+    if (body)
+    {
+        //cpSpaceRemoveBody(space, body);
         cpBodyFree(body);
+    }
 }
 
 static void freeConstraintsHelper(cpConstraint *constraint, void *data)
 {
-	//cpSpace *space = (cpSpace*)data;    
-	if (constraint)
+	//cpSpace *space = (cpSpace*)data;
+	
+    if (constraint)
+    {
+        //cpSpaceRemoveConstraint(space, constraint);
         cpConstraintFree(constraint);
+    }
 }
 
 static void addBody(cpSpace *space, void *obj, void *data)
@@ -443,13 +478,6 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 {	
 	[super init];
 	
-//	static BOOL initialized = NO;	
-//	if (!initialized)
-//	{
-//		cpInitChipmunk();
-//		initialized = YES;
-//	}
-	
 	_space = space;
 	
 	//hmmm this gravity is silly.... sorry -rkb
@@ -474,8 +502,10 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 {		
     if (_space != nil)
 	{
-		//Clear all "unowned" static bodies
+		//Clear everything
+        cpSpaceEachConstraint(_space, freeConstraintsHelper, _space);
 		cpSpaceEachShape(_space, freeShapesHelper, _space);
+        cpSpaceEachBody(_space, freeBodiesHelper, _space);
 		cpSpaceFree(_space);
 	}	
 	
@@ -513,6 +543,9 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 	if ([[NSFileManager defaultManager] fileExistsAtPath:path])
 	{
 		cpSSDelegate cpssdel(delegate);
+		
+        if ([delegate respondsToSelector:@selector(scaleCoordinatesBy)])
+            _reader.setScaleCoordinatesBy(delegate.scaleCoordinatesBy);
 		
 		_reader.delegate = &cpssdel;
 		_reader.load(_space, [path cStringUsingEncoding:NSASCIIStringEncoding]);
@@ -582,8 +615,8 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 {	
     NSMutableArray *shapes = [NSMutableArray arrayWithCapacity:4];
     cpVect bl = cpv(rect.origin.x + inset.x, rect.origin.y + inset.y);
-    cpVect br = cpv(rect.size.width - inset.x, rect.origin.y + inset.y);
-    cpVect tr = cpv(rect.size.width - inset.x, rect.size.height - inset.y);
+    cpVect br = cpv(rect.origin.x + rect.size.width - inset.x, rect.origin.y + inset.y);
+    cpVect tr = cpv(rect.origin.x + rect.size.width - inset.x, rect.size.height - inset.y);
     cpVect tl = cpv(rect.origin.x + inset.x, rect.size.height - inset.y);
     
 	bottomWall = [self addSegmentAtWorldAnchor:bl
@@ -729,6 +762,11 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 
 -(cpShape*) addCircleAt:(cpVect)pos mass:(cpFloat)mass radius:(cpFloat)radius
 {
+    return [self addCircleAt:pos mass:mass radius:radius offset:cpvzero];
+}
+
+-(cpShape*) addCircleAt:(cpVect)pos mass:(cpFloat)mass radius:(cpFloat)radius offset:(CGPoint)offset
+{
     cpBody* body;
 	if (mass != STATIC_MASS)
         body = cpBodyNew(mass, cpMomentForCircle(mass, radius, radius, cpvzero));
@@ -739,7 +777,7 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
     
     [self addBody:body];
 	
-	return [self addCircleToBody:body radius:radius];
+	return [self addCircleToBody:body radius:radius offset:offset];
 }
 
 -(cpShape*) addCircleToBody:(cpBody*)body radius:(cpFloat)radius
@@ -751,8 +789,7 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 {
     cpShape* shape;
     
-    shape = cpCircleShapeNew(body, radius, cpvzero);
-    cpCircleShapeSetOffset(shape, offset);
+    shape = cpCircleShapeNew(body, radius, offset);
 	
 	[self setupDefaultShape:shape];
 	[self addShape:shape];
@@ -932,9 +969,27 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 	return shape;    
 }
 
+-(NSArray*) getShapes
+{
+	NSMutableArray *allShapes = [NSMutableArray array];
+	
+	cpSpaceEachShape(_space, shapePointerToArray, allShapes); // Grab all shapes from the other space
+	
+	return allShapes;
+}
+
 -(cpShape*) getShapeAt:(cpVect)pos layers:(cpLayers)layers group:(cpLayers)group
 {
 	return cpSpacePointQueryFirst(_space, pos, layers, group);
+}
+
+-(cpShape*) getShapeAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpLayers)group
+{
+    NSArray *shapes = [self getShapesAt:pos radius:radius layers:layers group:group];
+    if ([shapes count])
+        return (cpShape*)[[shapes lastObject] pointerValue];
+    else
+        return nil;
 }
 
 -(cpShape*) getShapeAt:(cpVect)pos
@@ -973,16 +1028,60 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 
 -(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpLayers)group;
 {
-	NSMutableArray *shapes = [NSMutableArray array];
-	
+    return [self getShapesAt:pos radius:radius layers:layers group:group contactPointsSets:nil];
+}
+
+-(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpGroup)group contactPointsSets:(NSMutableArray*)contactSets
+{
+    shapeAndContactSets pair;
+    
+	pair.shapes = [NSMutableArray array];
+    pair.contactSets = contactSets;
+    
 	cpCircleShape circle;
 	cpCircleShapeInit(&circle, [self staticBody], radius, pos);
 	circle.shape.layers = layers;
 	circle.shape.group = group;
 	
-	cpSpaceShapeQuery(_space, (cpShape*)(&circle), (cpSpaceShapeQueryFunc)collectAllCollidingShapes, shapes);
+	cpSpaceShapeQuery(_space, (cpShape*)(&circle), (cpSpaceShapeQueryFunc)collectAllCollidingShapes, &pair);
 	
-	return shapes;
+	return pair.shapes;
+}
+
+-(NSArray*) getShapesAt:(cpVect)pos width:(float)width height:(float)height
+{
+    return [self getShapesAt:pos width:width height:height layers:CP_ALL_LAYERS group:CP_NO_GROUP];
+}
+
+-(NSArray*) getShapesAt:(cpVect)pos width:(float)width height:(float)height layers:(cpLayers)layers group:(cpGroup)group
+{
+    return [self getShapesAt:pos width:width height:height layers:CP_ALL_LAYERS group:CP_NO_GROUP contactPointsSets:nil];
+}
+
+-(NSArray*) getShapesAt:(cpVect)pos width:(float)width height:(float)height layers:(cpLayers)layers group:(cpGroup)group contactPointsSets:(NSMutableArray*)contactSets
+{
+    shapeAndContactSets pair;
+    
+	pair.shapes = [NSMutableArray array];
+    pair.contactSets = contactSets;
+    
+    const cpFloat halfHeight = height/2.0f;
+	const cpFloat halfWidth = width/2.0f;
+    cpVect verts[4] = {
+        cpv(-halfWidth, halfHeight),	/* top-left */
+        cpv( halfWidth, halfHeight),	/* top-right */
+        cpv( halfWidth,-halfHeight),	/* bottom-right */
+        cpv(-halfWidth,-halfHeight)     /* bottom-left */
+    };
+    
+	cpPolyShape rect;
+	cpPolyShapeInit(&rect, [self staticBody], 4, verts, pos);
+	rect.shape.layers = layers;
+	rect.shape.group = group;
+	
+	cpSpaceShapeQuery(_space, (cpShape*)(&rect), (cpSpaceShapeQueryFunc)collectAllCollidingShapes, &pair);
+	
+	return pair.shapes;
 }
 
 -(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius
@@ -1485,6 +1584,84 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 	}	
 }
 
+-(void) flipXShape:(cpShape*)shape
+{
+    switch(shape->CP_PRIVATE(klass)->type)
+	{
+		case CP_SEGMENT_SHAPE:
+		{
+			cpVect a = cpSegmentShapeGetA(shape);
+			cpVect b = cpSegmentShapeGetB(shape);
+            
+            a.x *= -1;
+            b.x *= -1;
+			
+			cpSegmentShapeSetEndpoints(shape, a, b);
+			break;
+		}
+		case CP_POLY_SHAPE:
+		{
+			int numVerts = cpPolyShapeGetNumVerts(shape);
+			cpVect *verts = (cpVect*)malloc(sizeof(cpVect)*numVerts);
+			
+			// copy in reverse
+            int j = 0;
+			for (int i = numVerts-1; i >= 0; --i)
+            {
+				verts[j] = cpPolyShapeGetVert(shape, i);
+                verts[j].x *= -1;
+                ++j;
+            }
+			
+			cpPolyShapeSetVerts(shape, numVerts, verts, cpvzero);
+			
+			free(verts);
+			break;
+		}
+		default:
+			break;
+	}
+}
+
+-(void) flipYShape:(cpShape*)shape
+{
+    switch(shape->CP_PRIVATE(klass)->type)
+	{
+		case CP_SEGMENT_SHAPE:
+		{
+			cpVect a = cpSegmentShapeGetA(shape);
+			cpVect b = cpSegmentShapeGetB(shape);
+            
+            a.y *= -1;
+            b.y *= -1;
+			
+			cpSegmentShapeSetEndpoints(shape, a, b);
+			break;
+		}
+		case CP_POLY_SHAPE:
+		{
+			int numVerts = cpPolyShapeGetNumVerts(shape);
+			cpVect *verts = (cpVect*)malloc(sizeof(cpVect)*numVerts);
+			
+			// copy in reverse
+            int j = 0;
+			for (int i = numVerts-1; i >= 0; --i)
+            {
+				verts[j] = cpPolyShapeGetVert(shape, i);
+                verts[j].y *= -1;
+                ++j;
+            }
+			
+			cpPolyShapeSetVerts(shape, numVerts, verts, cpvzero);
+			
+			free(verts);
+			break;
+		}
+		default:
+			break;
+	}
+}
+
 -(void) addConstraint:(cpConstraint*)constraint
 {
     cpSpaceAddConstraint(_space, constraint);
@@ -1519,7 +1696,7 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
         
         [_constraintCleanupDelegate aboutToFreeConstraint:constraint];
         cpSpaceRemoveConstraint(_space, constraint);
-        
+        cpConstraintFree(constraint);
 	}
 }
 

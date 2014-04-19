@@ -9,6 +9,11 @@
 
 #import "SpaceManagerCocos2d.h"
 
+#if (COCOS2D_VERSION >= 0x00020100)
+#define shaderProgram_          _shaderProgram
+#define program_                _program
+#endif
+
 void smgrBasicIterateShapesFunc(cpSpace *space, smgrEachFunc func)
 {
     cpSpaceEachShape(space, (cpSpaceShapeIteratorFunc)func, NULL);
@@ -134,14 +139,9 @@ static void drawConstraint(cpConstraint *constraint, void* data)
 
 #if (COCOS2D_VERSION >= 0x00020000)
     self.shaderProgram = [[CCShaderCache sharedShaderCache] programForKey:kCCShader_Position_uColor];
-#if (COCOS2D_VERSION >= 0x00020100)
-    _colorLocation = glGetUniformLocation(self.shaderProgram->_program, "u_color");
-    _pointSizeLocation = glGetUniformLocation(self.shaderProgram->_program, "u_pointSize");
-#else
+    
     _colorLocation = glGetUniformLocation(self.shaderProgram->program_, "u_color");
-    _pointSizeLocation = glGetUniformLocation(self.shaderProgram->program_, "u_pointSize");    
-#endif
-
+    _pointSizeLocation = glGetUniformLocation(self.shaderProgram->program_, "u_pointSize");
 #endif
     return self;
 }

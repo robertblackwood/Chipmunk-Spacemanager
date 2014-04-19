@@ -62,8 +62,6 @@ void cpShapeNodeEfficientDrawAt(cpShape *shape, CGPoint pt, CGPoint rotation);
 #endif
 }
 
-//color & opacity inherited from rgba protocol
-
 /*! Size of drawn points, default is 3 */
 @property (readwrite, assign) cpFloat pointSize;    //### This isn't used..?
 

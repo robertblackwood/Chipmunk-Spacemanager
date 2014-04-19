@@ -39,6 +39,9 @@
 /*! Set this if you don't want this object to sync with the body's rotation */
 @property (nonatomic, readwrite, assign) BOOL ignoreRotation;
 
+/*! Set this if you don't want this object to sync with the body's position */
+@property (nonatomic, readwrite, assign) BOOL ignorePosition;
+
 /*! Set this to true if you want the shape and/or body to be free'd when
  we're released */
 @property (nonatomic, readwrite, assign) BOOL autoFreeShapeAndBody;
@@ -82,6 +85,7 @@
     cpShape*        _shape;
 	SpaceManager*	_spaceManager;
 	BOOL			_ignoreRotation;
+    BOOL            _ignorePosition;
 	BOOL            _autoFreeShapeAndBody;
 	cpFloat         _integrationDt;
 }

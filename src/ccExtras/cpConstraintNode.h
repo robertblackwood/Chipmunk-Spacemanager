@@ -35,20 +35,12 @@ void cpConstraintNodeDraw(cpConstraint *constraint);
     calls above to draw many constraints at once */
 void cpConstraintNodeEfficientDraw(cpConstraint *constraint);
 
-@interface cpConstraintNode
-#if (COCOS2D_VERSION >= 0x00020100)
-: CCNodeRGBA
-#else
-: CCNode <CCRGBAProtocol>
-#endif
+@interface cpConstraintNode : CCNodeRGBA
 {
 	cpConstraint *_constraint;
 	
 	BOOL			_autoFreeConstraint;
 	SpaceManager	*_spaceManager;
-	
-	ccColor3B _color;
-	GLubyte _opacity;
 	
 	cpFloat _pointSize;
 	cpFloat _lineWidth;
@@ -59,15 +51,13 @@ void cpConstraintNodeEfficientDraw(cpConstraint *constraint);
     int _pointSizeLocation;
 #endif
 }
-@property (readwrite, assign) cpConstraint* constraint;
-@property (readwrite, assign) BOOL autoFreeConstraint;
-@property (readwrite, assign) SpaceManager *spaceManager;
+@property (readwrite, assign, nonatomic) cpConstraint* constraint;
+@property (readwrite, assign, nonatomic) BOOL autoFreeConstraint;
+@property (readwrite, assign, nonatomic) SpaceManager *spaceManager;
 
-//color & opacity inherited from rgba protocol
-
-@property (readwrite, assign) cpFloat pointSize;
-@property (readwrite, assign) cpFloat lineWidth;
-@property (readwrite, assign) BOOL smoothDraw;
+@property (readwrite, assign, nonatomic) cpFloat pointSize;
+@property (readwrite, assign, nonatomic) cpFloat lineWidth;
+@property (readwrite, assign, nonatomic) BOOL smoothDraw;
 
 + (id) nodeWithConstraint:(cpConstraint*)c;
 - (id) initWithConstraint:(cpConstraint*)c;

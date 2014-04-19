@@ -14,7 +14,7 @@
 #import "SpaceManager.h"
 #import "cpCCNodeImpl.h"
 
-@interface cpCCNode : CCNode<cpCCNodeProtocol>
+@interface cpCCNode : CCNodeRGBA<cpCCNodeProtocol>
 {
 	cpCCNodeImpl *_implementation;
 }

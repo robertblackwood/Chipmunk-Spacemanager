@@ -16,7 +16,12 @@
 /*
 	ATTENTION! COCOS2D USERS
  
-    Note you will not want to include the PhysicsEditorExtras folder
+	Large change: Include and use SpaceManagerCocos2d class now found
+	in the ccExtras folder. This design change gives a better seperation
+	and will prove much more flexible in the long run, thanks for
+	understanding.
+ 
+    Also, note you will not want to include the PhysicsEditorExtras folder
     if you are not using PhysicsEditor support; your app will not compile.
  
 	p.s. You may need to add the ccExtras folder path to your
@@ -24,8 +29,8 @@
  */
 
 // 0x00 HI ME LO
-// 00   00 03 00
-#define SPACE_MANAGER_VERSION 0x00000300
+// 00   00 02 02
+#define SPACE_MANAGER_VERSION 0x00000202
 
 #import "chipmunk.h"
 
@@ -73,6 +78,8 @@ typedef enum {
 -(BOOL) aboutToReadShape:(cpShape*)shape shapeId:(UInt64)id;
 -(BOOL) aboutToReadBody:(cpBody*)body bodyId:(UInt64)id;
 -(BOOL) aboutToReadConstraint:(cpConstraint*)constraint constraintId:(UInt64)id;
+
+-(float) scaleCoordinatesBy;
 @end
 
 /*! The SpaceManager */
@@ -208,6 +215,9 @@ typedef enum {
 /*! add a circle shape */
 -(cpShape*) addCircleAt:(cpVect)pos mass:(cpFloat)mass radius:(cpFloat)radius;
 
+/*! add a circle shape */
+-(cpShape*) addCircleAt:(cpVect)pos mass:(cpFloat)mass radius:(cpFloat)radius offset:(CGPoint)offset;
+
 /*! add a circle shape to existing body */
 -(cpShape*) addCircleToBody:(cpBody*)body radius:(cpFloat)radius;
 
@@ -256,6 +266,9 @@ typedef enum {
 /*! Retrieve the first shape found at this position matching layers and group */
 -(cpShape*) getShapeAt:(cpVect)pos layers:(cpLayers)layers group:(cpLayers)group;
 
+/*! Retrieve the first shape found at this position matching layers and group */
+-(cpShape*) getShapeAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpLayers)group;
+
 /*! Retrieve the first shape found at this position */
 -(cpShape*) getShapeAt:(cpVect)pos;
 
@@ -268,15 +281,31 @@ typedef enum {
 /*! Use to only rehash one shape */
 -(void) rehashShape:(cpShape*)shape;
 
+/*! return an array of NSValues with a pointer to each cpShape */
+-(NSArray*) getShapes;
+
 /*! Given a point, return an array of NSValues with a pointer to a cpShape */
 -(NSArray*) getShapesAt:(cpVect)pos layers:(cpLayers)layers group:(cpLayers)group;
 /*! @see getShapesAt:layers:group: */
 -(NSArray*) getShapesAt:(cpVect)pos;
 
+/*! Given a point and a radius, return an array of NSValues with a pointer to a cpShape, optional contactSets out-param will be filled with
+    NSValue's with a pointer to cpContactSet */
+-(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpGroup)group contactPointsSets:(NSMutableArray*)contactSets;
+
 /*! Given a point and a radius, return an array of NSValues with a pointer to a cpShape */
 -(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpLayers)group;
 /*! @see getShapesAt:radius:layers:group: */
 -(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius;
+
+/*! Given a point and rect's width and height (point at center), return an array of NSValues with a pointer to a cpShape */
+-(NSArray*) getShapesAt:(cpVect)pos width:(float)width height:(float)height layers:(cpLayers)layers group:(cpGroup)group contactPointsSets:(NSMutableArray*)contactSets;
+
+/*! Given a point and rect's width and height (point at center), return an array of NSValues with a pointer to a cpShape */
+-(NSArray*) getShapesAt:(cpVect)pos width:(float)width height:(float)height layers:(cpLayers)layers group:(cpGroup)group;
+
+/*! Given a point and rect's width and height (point at center), return an array of NSValues with a pointer to a cpShape */
+-(NSArray*) getShapesAt:(cpVect)pos width:(float)width height:(float)height;
 
 /*! Get shapes that are using this body */
 -(NSArray*) getShapesOnBody:(cpBody*)body;
@@ -384,6 +413,12 @@ typedef enum {
 /*! Offset shape from body using (circle:center, segment:endpoints, poly:vertices) */
 -(void) offsetShape:(cpShape*)shape offset:(cpVect)offset;
 
+/*! Flip shape on the x axis */
+-(void) flipXShape:(cpShape*)shape;
+
+/*! Flip shape on the y axis */
+-(void) flipYShape:(cpShape*)shape;
+
 /*! Unique Collision: will ignore the effects a collsion between types */
 -(void) ignoreCollisionBetweenType:(unsigned int)type1 otherType:(unsigned int)type2;
 
@@ -486,7 +521,7 @@ typedef enum {
 @end
 
 //Layers (convenience)
-#define CP_LAYER_FROM_NUM(x)            (1 << x)
+#define CP_LAYER_FROM_NUM(x)            (1 << (x))
 #define CP_LAYER_NUM_ON(layers, num)    ((layers & CP_LAYER_FROM_NUM(x) != 0)
 
 #define CP_LAYER1   (1 << 0)

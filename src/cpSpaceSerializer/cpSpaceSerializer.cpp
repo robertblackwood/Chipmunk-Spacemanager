@@ -28,9 +28,11 @@ template <typename T>
 static T stringToValue(const char* str)
 {
 	T value(0);
-	std::istringstream stream(str);
-	stream >> value;
-	
+    if (str)
+    {
+        std::istringstream stream(str);
+        stream >> value;
+	}
 	return value;
 }
 
@@ -136,10 +138,6 @@ cpSpace* cpSpaceSerializer::load(cpSpace *space, const char* filename)
 		cpShape *shape = createShape(child);
 		if (shape)
 		{
-			//This should not happen like this, need to reflect reality -rkb
-            if (shape->body->m != INFINITY && !cpSpaceContainsBody(space, shape->body))
-				cpSpaceAddBody(space, shape->body);
-
             cpSpaceAddShape(space, shape);
 		}
 		
@@ -207,7 +205,7 @@ cpShape *cpSpaceSerializer::createCircle(TiXmlElement *elm)
 	cpShape *shape;
 	cpBody *body = createBody(elm);
 	
-	cpFloat radius = createValue<cpFloat>("radius", elm);
+	cpFloat radius = createValue<cpFloat>("radius", elm) * _scaleBy;
 	cpVect offset = createPoint("offset", elm);
 	
 	shape = cpCircleShapeNew(body, radius, offset);
@@ -222,7 +220,7 @@ cpShape *cpSpaceSerializer::createSegment(TiXmlElement *elm)
 	
 	cpVect a = createPoint("a", elm);
 	cpVect b = createPoint("b", elm);
-	cpFloat radius = createValue<cpFloat>("radius", elm);
+	cpFloat radius = createValue<cpFloat>("radius", elm) * _scaleBy;
 	
 	shape = cpSegmentShapeNew(body, a, b, radius);
 	
@@ -244,7 +242,7 @@ cpShape *cpSpaceSerializer::createPoly(TiXmlElement *elm)
 	int i;
 	for (i = 0; i < numVerts && vertElm; i++)
 	{
-		verts[i] = cpv(getAttribute<cpFloat>(vertElm, "x"), getAttribute<cpFloat>(vertElm, "y"));
+		verts[i] = cpv(getAttribute<cpFloat>(vertElm, "x") * _scaleBy, getAttribute<cpFloat>(vertElm, "y") * _scaleBy);
 		vertElm = vertElm->NextSiblingElement("vert");
 	}
 	
@@ -293,7 +291,18 @@ cpBody *cpSpaceSerializer::createBody(TiXmlElement *elm)
                 {
                     cpBodyFree(body);
                     body = NULL;
+
+                    // update map
+                    _bodyMap[b_id] = NULL;
                 }
+            }
+
+            if (body)
+            {
+                bool rogue = getAttribute<bool>(bodyElm, "rogue");
+
+                if (body->m != INFINITY && !rogue)
+                    cpSpaceAddBody(_space, body);
             }
 		}
 		else
@@ -355,9 +364,9 @@ cpConstraint *cpSpaceSerializer::createConstraint(TiXmlElement *elm)
 	
 	CPSS_ID id = createValue<CPSS_ID>("id", elm);
 	constraint->maxForce = createValue<cpFloat>("maxForce", elm);
-	constraint->errorBias = createValue<cpFloat>("errorBias", elm);
-	constraint->maxBias = createValue<cpFloat>("maxBias", elm);
-	
+    constraint->errorBias = createValue<cpFloat>("biasCoef", elm);
+    constraint->maxBias = createValue<cpFloat>("maxBias", elm);
+
 	if (delegate)
 	{
 		if (!delegate->reading(constraint, id))
@@ -400,8 +409,8 @@ cpConstraint *cpSpaceSerializer::createSlideJoint(TiXmlElement *elm)
 	cpBody *b;
 	createBodies(elm, &a, &b);
 	
-	cpFloat min = createValue<cpFloat>("min", elm);
-	cpFloat max = createValue<cpFloat>("max", elm);
+	cpFloat min = createValue<cpFloat>("min", elm)* _scaleBy;
+	cpFloat max = createValue<cpFloat>("max", elm)* _scaleBy;
 	
 	constraint = cpSlideJointNew(a, b, anchr1, anchr2, min, max);
 	
@@ -574,8 +583,8 @@ cpVect cpSpaceSerializer::createPoint(const char* name, TiXmlElement *elm)
 	
 	if (ptElm)
 	{
-		pt.x = getAttribute<cpFloat>(ptElm, "x");
-		pt.y = getAttribute<cpFloat>(ptElm, "y");
+		pt.x = getAttribute<cpFloat>(ptElm, "x") * _scaleBy;
+		pt.y = getAttribute<cpFloat>(ptElm, "y") * _scaleBy;
 	}
 	
 	return pt;
@@ -607,6 +616,16 @@ bool cpSpaceSerializer::save(cpSpace* space, const char* filename)
     cpSpaceEachConstraint(space, writeConstraint, &context);
 	
 	return _doc.SaveFile(filename);
+}
+
+void cpSpaceSerializer::setScaleCoordinatesBy(float scaleBy)
+{
+    _scaleBy = scaleBy;
+}
+
+float cpSpaceSerializer::scaleCoordinatesBy()
+{
+    return _scaleBy;
 }
 
 TiXmlElement *cpSpaceSerializer::createShapeElm(cpShape *shape)
@@ -736,6 +755,9 @@ TiXmlElement *cpSpaceSerializer::createBodyElm(cpBody *body)
     //It hasn't been written yet, so write it, but not the staticBody
     if (itr == _bodyMap.end() && body != _space->staticBody)
     {
+        if (cpSpaceContainsBody(_space, body))
+            setAttribute(elm, "rogue", true);
+
         elm->LinkEndChild(createValueElm("id", id));
         elm->LinkEndChild(createValueElm("mass", body->m));
         elm->LinkEndChild(createValueElm("inertia", body->i));
@@ -810,9 +832,9 @@ TiXmlElement *cpSpaceSerializer::createConstraintElm(cpConstraint* constraint)
 	elm->LinkEndChild(createValueElm("body_b_id", body_b_id));
 
 	elm->LinkEndChild(createValueElm("maxForce", constraint->maxForce));
-	elm->LinkEndChild(createValueElm("errorBias", constraint->errorBias));
-	elm->LinkEndChild(createValueElm("maxBias", constraint->maxBias));	
-	
+    elm->LinkEndChild(createValueElm("biasCoef", constraint->errorBias));
+    elm->LinkEndChild(createValueElm("maxBias", constraint->maxBias));
+
 	return elm;
 }
 
