@@ -34,9 +34,25 @@ static void shapePointerToArray(cpShape *shape, void* data) {
 -(void) removeAndMaybeFreeBody:(cpBody*)body freeBody:(BOOL)freeBody;
 @end
 
-@interface FreeCValue : NSValue
+@interface FreeCValue : NSObject
+{
+    void* _pointer;
+}
 @end
 @implementation FreeCValue
+
++(id) valueWithPointer:(void*)pointer
+{
+    FreeCValue *val = [[[self alloc] init] autorelease];
+    val->_pointer = pointer;
+    return val;
+}
+
+-(void*) pointerValue
+{
+    return _pointer;
+}
+
 - (void) dealloc
 {
 	void *info = [self pointerValue];
@@ -396,6 +412,19 @@ static void addShape(cpSpace *space, void *obj, void *data)
 {
 	cpShape *shape = (cpShape*)(obj);
 	cpSpaceAddShape(space, shape);
+}
+
+static void removeConstraint(cpSpace *space, void *obj, void *data)
+{
+	cpConstraint *c = (cpConstraint*)(obj);
+    if (cpSpaceContainsConstraint(space, c))
+        cpSpaceRemoveConstraint(space, c);
+}
+
+static void removeAndFreeConstraint(cpSpace *space, void *obj, void *data)
+{
+	removeConstraint(space, obj, data);
+    cpConstraintFree((cpConstraint*)obj);
 }
 
 static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
@@ -983,7 +1012,7 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 	return cpSpacePointQueryFirst(_space, pos, layers, group);
 }
 
--(cpShape*) getShapeAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpLayers)group
+-(cpShape*) getShapeAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpGroup)group
 {
     NSArray *shapes = [self getShapesAt:pos radius:radius layers:layers group:group];
     if ([shapes count])
@@ -1013,7 +1042,7 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 	cpSpaceReindexShape(_space, shape);
 }
 
--(NSArray*) getShapesAt:(cpVect)pos layers:(cpLayers)layers group:(cpLayers)group
+-(NSArray*) getShapesAt:(cpVect)pos layers:(cpLayers)layers group:(cpGroup)group
 {
 	NSMutableArray *shapes = [NSMutableArray array];
 	cpSpacePointQuery(_space, pos, layers, group, (cpSpacePointQueryFunc)collectAllShapes, shapes);
@@ -1026,7 +1055,7 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 	return [self getShapesAt:pos layers:CP_ALL_LAYERS group:CP_NO_GROUP];
 }
 
--(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpLayers)group;
+-(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpGroup)group;
 {
     return [self getShapesAt:pos radius:radius layers:layers group:group contactPointsSets:nil];
 }
@@ -1234,7 +1263,7 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 
 -(BOOL) isSpaceLocked
 {
-    return _space->CP_PRIVATE(locked) != 0;
+    return cpSpaceIsLocked(_space);
 }
 
 -(void) addShape:(cpShape*)shape
@@ -1669,16 +1698,20 @@ static void removeCollision(cpSpace *space, void *collisionPair, void *inv_list)
 
 -(cpConstraint*) removeConstraint:(cpConstraint*)constraint
 {
-    if (cpSpaceContainsConstraint(_space, constraint))
-        cpSpaceRemoveConstraint(_space, constraint);	
-	
+    if ([self isSpaceLocked])
+        cpSpaceAddPostStepCallback(_space, removeConstraint, constraint, nil);
+    else
+        removeConstraint(_space, constraint, nil);
+    
     return constraint;
 }
 
 -(void) removeAndFreeConstraint:(cpConstraint*)constraint
 {
-	[self removeConstraint:constraint];
-	cpConstraintFree(constraint);
+    if ([self isSpaceLocked])
+        cpSpaceAddPostStepCallback(_space, removeAndFreeConstraint, constraint, nil);
+    else
+        removeAndFreeConstraint(_space, constraint, nil);
 }
 
 -(void) removeAndFreeConstraintsOnBody:(cpBody*)body

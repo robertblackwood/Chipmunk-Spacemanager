@@ -164,7 +164,7 @@ typedef enum {
 @property (readwrite, assign) BOOL cleanupBodyDependencies;
 
 /*! This will be called from all methods that auto-free constraints dependent on bodies being freed */
-@property (readwrite, retain) id<cpConstraintCleanupDelegate> constraintCleanupDelegate;
+@property (readwrite, assign) id<cpConstraintCleanupDelegate> constraintCleanupDelegate;
 
 /*! Default creation method */
 +(id) spaceManager;
@@ -264,10 +264,10 @@ typedef enum {
 -(cpShape*) addSegmentToBody:(cpBody*)body fromLocalAnchor:(cpVect)fromPos toLocalAnchor:(cpVect)toPos radius:(cpFloat)radius;
 
 /*! Retrieve the first shape found at this position matching layers and group */
--(cpShape*) getShapeAt:(cpVect)pos layers:(cpLayers)layers group:(cpLayers)group;
+-(cpShape*) getShapeAt:(cpVect)pos layers:(cpLayers)layers group:(cpGroup)group;
 
 /*! Retrieve the first shape found at this position matching layers and group */
--(cpShape*) getShapeAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpLayers)group;
+-(cpShape*) getShapeAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpGroup)group;
 
 /*! Retrieve the first shape found at this position */
 -(cpShape*) getShapeAt:(cpVect)pos;
@@ -285,7 +285,7 @@ typedef enum {
 -(NSArray*) getShapes;
 
 /*! Given a point, return an array of NSValues with a pointer to a cpShape */
--(NSArray*) getShapesAt:(cpVect)pos layers:(cpLayers)layers group:(cpLayers)group;
+-(NSArray*) getShapesAt:(cpVect)pos layers:(cpLayers)layers group:(cpGroup)group;
 /*! @see getShapesAt:layers:group: */
 -(NSArray*) getShapesAt:(cpVect)pos;
 
@@ -294,7 +294,7 @@ typedef enum {
 -(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpGroup)group contactPointsSets:(NSMutableArray*)contactSets;
 
 /*! Given a point and a radius, return an array of NSValues with a pointer to a cpShape */
--(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpLayers)group;
+-(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius layers:(cpLayers)layers group:(cpGroup)group;
 /*! @see getShapesAt:radius:layers:group: */
 -(NSArray*) getShapesAt:(cpVect)pos radius:(float)radius;
 

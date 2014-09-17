@@ -39,7 +39,7 @@ void smgrBasicEachBody(void *body_ptr, void* data); /*!< sync's CCNode to pos/ro
 -(void) start;
 
 /*! Schedule a timed loop (against step:) using dt */
--(void) start:(float)dt;
+-(void) start:(ccTime)dt;
 
 /*! Stop the timed loop */
 -(void) stop;

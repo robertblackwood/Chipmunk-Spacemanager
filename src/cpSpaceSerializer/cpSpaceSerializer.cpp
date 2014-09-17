@@ -247,9 +247,9 @@ cpShape *cpSpaceSerializer::createPoly(TiXmlElement *elm)
 	}
 	
 	cpVect offset = createPoint("offset", elm);
-	
-	shape = cpPolyShapeNew(body, i, verts, offset);
-	
+	shape = cpPolyShapeNew(body, i, verts, offset);	
+    free(verts);
+    
 	return shape;
 }
 

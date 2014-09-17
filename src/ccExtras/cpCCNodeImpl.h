@@ -60,7 +60,7 @@
 @property (nonatomic, readwrite, assign) cpBody *body;
 
 /*! If autoFreeShapeAndBody is set, then this must be set too */
-@property (nonatomic, readwrite, assign) SpaceManager *spaceManager;
+@property (nonatomic, strong) SpaceManager *spaceManager;
 
 @optional
 -(void) applyImpulse:(cpVect)impulse;
